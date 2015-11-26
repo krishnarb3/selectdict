@@ -1,17 +1,18 @@
 package dev.noob.pro.rb.selectdict;
 
-import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.PixelFormat;
 import android.os.AsyncTask;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import org.w3c.dom.Document;
@@ -41,6 +42,7 @@ public class HeadLayer extends View
     View view;
     WindowManager windowManager;
     TextView textview;
+    ImageView imageview;
     ClipboardManager clipboardManager;
     ContentResolver cr;
     public HeadLayer(Context context)
@@ -62,9 +64,9 @@ public class HeadLayer extends View
         windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         windowManager.addView(frameLayout, params);
         LayoutInflater layoutInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        // Here is the place where you can inject whatever layout you want.
         view = layoutInflater.inflate(R.layout.head, frameLayout);
         cr = context.getContentResolver();
+
         frameLayout.setOnClickListener(new OnClickListener()
         {
             @Override
@@ -72,8 +74,19 @@ public class HeadLayer extends View
             {
                 clicked();
                 clipboardManager = (ClipboardManager)context.getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clip = clipboardManager.getPrimaryClip();
-                data = (String)clipboardManager.getText();
+                clipboardManager.addPrimaryClipChangedListener(new ClipboardManager.OnPrimaryClipChangedListener()
+                {
+                    @Override
+                    public void onPrimaryClipChanged()
+                    {
+                        frameLayout.setVisibility(VISIBLE);
+                        data = (String)clipboardManager.getText();
+                        Log.d(LOGGING,"Primary Clip Changed : "+data);
+                        getfromapi task2 = new getfromapi();
+                        task2.execute(data);
+                    }
+                });
+                data = clipboardManager.getText().toString();
                 getMeaning(data);
                 Log.d(LOGGING, "Inside Frame onclick");
             }
@@ -90,7 +103,9 @@ public class HeadLayer extends View
     }
     public void destroy()
     {
-        windowManager.removeView(frameLayout);
+        //windowManager.removeView(frameLayout);
+        frameLayout.setVisibility(INVISIBLE);
+
     }
     public void clicked()
     {
@@ -102,6 +117,7 @@ public class HeadLayer extends View
         getfromapi task = new getfromapi();
         task.execute(data);
     }
+
     public class getfromapi extends AsyncTask<String,Void,Void>
     {
         Boolean internet_conn=true;
@@ -114,6 +130,7 @@ public class HeadLayer extends View
             try
             {
                 URL url = new URL(link_final);
+                Log.d(LOGGING,link_final);
                 HttpURLConnection httpurlconn = (HttpURLConnection)url.openConnection();
                 inputstream = httpurlconn.getInputStream();
                 result=parseXML(inputstream);
@@ -151,8 +168,12 @@ public class HeadLayer extends View
             Document document = documentbuilder.parse(inputstream);
             Element root = document.getDocumentElement();
             NodeList nodelist = root.getElementsByTagName("dt");
-            Node node = nodelist.item(0);
-            value = node.getTextContent();
+            for(int i=0;i<nodelist.getLength();i++)
+            {
+                value = value+"\n"+i+".\n";
+                Node node = nodelist.item(i);
+                value = value+ node.getTextContent();
+            }
         } catch (Exception e)
         {
             Log.d(LOGGING,"EXCEPTION : "+e);
