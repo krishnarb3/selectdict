@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">Select Dict</string>
     <string name="action_settings">Settings</string>
+    <string name="instruction_text">Press on the Floating button to start the service\n
+        \nRuns in the background and read from the clipboard whenever you select and copy text\n
+        \nLong Press on the icon to hide</string>
 </resources>

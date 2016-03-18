@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/SelectDict.iml" filepath="$PROJECT_DIR$/SelectDict.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/selectdictionary/selectdictionary.iml" filepath="$PROJECT_DIR$/selectdictionary/selectdictionary.iml" />
     </modules>
   </component>
 </project>

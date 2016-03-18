@@ -3,182 +3,187 @@ package dev.noob.pro.rb.selectdict;
 import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.AsyncTask;
-import android.os.Looper;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.ListView;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import com.nitt.cse.selectdictionary.DictionaryItem;
+import com.nitt.cse.selectdictionary.DictionaryLookup;
+import com.nitt.cse.selectdictionary.Utils;
 
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by rb on 22/11/15.
  */
-public class HeadLayer extends View
-{
-    Utilities util = new Utilities();
-    String auth_key = util.ret_auth_key();
-    String text_key = "?key="+auth_key;
-    String link_initial = "http://www.dictionaryapi.com/api/v1/references/collegiate/xml/";
-    public String LOGGING = "LOGGING";
-    String data;
+
+public class HeadLayer extends View {
+
+    String mData;
     Context context;
     FrameLayout frameLayout;
-    View view;
-    WindowManager windowManager;
-    TextView textview;
-    ImageView imageview;
-    ClipboardManager clipboardManager;
-    ContentResolver cr;
-    public HeadLayer(Context context)
-    {
+    View mView;
+    WindowManager mWindowManager;
+    WindowManager.LayoutParams params;
+    ListView mListView;
+    ImageView icon;
+    ClipboardManager mClipBoardManager;
+    ContentResolver mContentResolver;
+    Animation mAnimRotate;
+
+    public HeadLayer(Context context) {
         super(context);
         this.context = context;
         this.frameLayout = new FrameLayout(context);
         addtoWindow();
+        mAnimRotate = AnimationUtils.loadAnimation(context, R.anim.anim_rotate);
+        mAnimRotate.setRepeatCount(Animation.INFINITE);
     }
-    private void addtoWindow()
-    {
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+
+    private void addtoWindow() {
+        params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT);
+
         params.gravity = Gravity.END;
-        windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        windowManager.addView(frameLayout, params);
+        params.x = 0;
+        params.y = 100;
+        mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        mWindowManager.addView(frameLayout, params);
         LayoutInflater layoutInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        view = layoutInflater.inflate(R.layout.head, frameLayout);
-        cr = context.getContentResolver();
+        mView = layoutInflater.inflate(R.layout.head, frameLayout);
+        mListView = (ListView) mView.findViewById(R.id.text);
+        mListView.setVisibility(INVISIBLE);
+        icon = (ImageView) mView.findViewById(R.id.icon);
 
-        frameLayout.setOnClickListener(new OnClickListener()
-        {
+        icon.setOnTouchListener(new View.OnTouchListener() {
+            private int initialX;
+            private int initialY;
+            private float initialTouchX;
+            private float initialTouchY;
+
             @Override
-            public void onClick(View v)
-            {
-                clicked();
-                clipboardManager = (ClipboardManager)context.getSystemService(Context.CLIPBOARD_SERVICE);
-                clipboardManager.addPrimaryClipChangedListener(new ClipboardManager.OnPrimaryClipChangedListener()
-                {
-                    @Override
-                    public void onPrimaryClipChanged()
-                    {
-                        frameLayout.setVisibility(VISIBLE);
-                        data = (String)clipboardManager.getText();
-                        Log.d(LOGGING,"Primary Clip Changed : "+data);
-                        getfromapi task2 = new getfromapi();
-                        task2.execute(data);
-                    }
-                });
-                data = clipboardManager.getText().toString();
-                getMeaning(data);
-                Log.d(LOGGING, "Inside Frame onclick");
+            public boolean onTouch(View v, MotionEvent event) {
+                gestureDetector.onTouchEvent(event);
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        initialX = params.x;
+                        initialY = params.y;
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        params.x = initialX
+                                + (int) (event.getRawX() - initialTouchX);
+                        params.y = initialY
+                                + (int) (event.getRawY() - initialTouchY);
+                        mWindowManager.updateViewLayout(frameLayout, params);
+                        return true;
+                }
+                return false;
             }
         });
-        frameLayout.setOnLongClickListener(new OnLongClickListener()
-        {
+
+        mContentResolver = context.getContentResolver();
+        mClipBoardManager = (ClipboardManager)context.getSystemService(Context.CLIPBOARD_SERVICE);
+        mClipBoardManager.addPrimaryClipChangedListener(new ClipboardManager.OnPrimaryClipChangedListener() {
             @Override
-            public boolean onLongClick(View v)
-            {
-                destroy();
-                return true;
+            public void onPrimaryClipChanged() {
+                frameLayout.setVisibility(VISIBLE);
+                mListView.setVisibility(INVISIBLE);
+                try {
+                    mData = mClipBoardManager.getPrimaryClip()
+                            .getItemAt(0).getText().toString();
+                    Log.d(Utils.LOGGING, "Executing Asynctask");
+                    new AsyncFetchMeaningTask().execute(mData);
+                } catch (Exception e) {
+                    Log.d(Utils.LOGGING, e + "");
+                }
             }
         });
     }
-    public void destroy()
-    {
-        //windowManager.removeView(frameLayout);
+
+    public void toggleVisibility() {
+        if(frameLayout.getVisibility()==VISIBLE)
+            frameLayout.setVisibility(INVISIBLE);
+        else
+            frameLayout.setVisibility(VISIBLE);
+    }
+
+    public void destroy() {
+        //mWindowManager.removeView(frameLayout);
         frameLayout.setVisibility(INVISIBLE);
-
-    }
-    public void clicked()
-    {
-        textview = (TextView)view.findViewById(R.id.text);
-        textview.setVisibility(VISIBLE);
-    }
-    public void getMeaning(String data)
-    {
-        getfromapi task = new getfromapi();
-        task.execute(data);
     }
 
-    public class getfromapi extends AsyncTask<String,Void,Void>
-    {
-        Boolean internet_conn=true;
-        String result;
-        InputStream inputstream;
+    public void clicked() {
+        mListView = (ListView) mView.findViewById(R.id.text);
+        mListView.setVisibility(VISIBLE);
+    }
+
+    public class AsyncFetchMeaningTask extends AsyncTask<String,Void,List<DictionaryItem>> {
+        List<String> result=new ArrayList<>();
+        List<DictionaryItem> items;
+
         @Override
-        protected Void doInBackground(String... params)
-        {
-            String link_final=link_initial+params[0]+text_key;
-            try
-            {
-                URL url = new URL(link_final);
-                Log.d(LOGGING,link_final);
-                HttpURLConnection httpurlconn = (HttpURLConnection)url.openConnection();
-                inputstream = httpurlconn.getInputStream();
-                result=parseXML(inputstream);
-            } catch (Exception e)
-            {
-                internet_conn=false;
-                Log.d(LOGGING,"Exception : "+e);
-            }
-            return null;
+        protected void onPreExecute() {
+            icon.clearColorFilter();
+            super.onPreExecute();
+            icon.startAnimation(mAnimRotate);
         }
 
         @Override
-        protected void onPostExecute(Void aVoid)
-        {
+        protected List<DictionaryItem> doInBackground(String... params) {
+            List<String> paramsList = new ArrayList<>();
+            for(int i=0;i<params.length;i++)
+                paramsList.add(params[i]);
+            items = DictionaryLookup.getMeaning(paramsList);
+            return items;
+        }
 
-            if(!internet_conn)
-            textview.setText("No Internet Connection");
-            else
-            {
-
-
-                textview.setText(result);
-                super.onPostExecute(aVoid);
-
+        @Override
+        protected void onPostExecute(List<DictionaryItem> dictionaryItems) {
+            icon.clearAnimation();
+            super.onPostExecute(dictionaryItems);
+            mData = null;
+            for(int i=0;i<dictionaryItems.size();i++)
+                result.add(dictionaryItems.get(i).getWord()+"\n\n"
+                        +dictionaryItems.get(i).getDescription()+"\n");
+            Log.d(Utils.LOGGING,result.toString());
+            if(!dictionaryItems.get(dictionaryItems.size()-1).getDescription().equals("")) {
+                mListView.setVisibility(VISIBLE);
+                ArrayAdapter adapter = new ArrayAdapter(getContext(), android.R.layout.simple_list_item_1, result);
+                mListView.setAdapter(adapter);
+            }
+            else {
+                result.add("Connection Failure");
+                icon.setColorFilter(Color.argb(156, 252, 76, 78));
+                ArrayAdapter adapter = new ArrayAdapter(getContext(), android.R.layout.simple_list_item_1, result);
+                mListView.setAdapter(adapter);
             }
         }
     }
-    public String parseXML(InputStream inputstream)
-    {
-        DocumentBuilderFactory documentfactory = DocumentBuilderFactory.newInstance();
-        String value="";
-        try
-        {
-            DocumentBuilder documentbuilder = documentfactory.newDocumentBuilder();
-            Document document = documentbuilder.parse(inputstream);
-            Element root = document.getDocumentElement();
-            NodeList nodelist = root.getElementsByTagName("dt");
-            for(int i=0;i<nodelist.getLength();i++)
-            {
-                value = value+"\n"+i+".\n";
-                Node node = nodelist.item(i);
-                value = value+ node.getTextContent();
-            }
-        } catch (Exception e)
-        {
-            Log.d(LOGGING,"EXCEPTION : "+e);
+    final GestureDetector gestureDetector = new GestureDetector(new GestureDetector.SimpleOnGestureListener() {
+        public void onLongPress(MotionEvent e) {
+            toggleVisibility();
         }
-        return value;
-    }
+    });
 }

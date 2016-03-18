@@ -11,30 +11,25 @@ import android.util.Log;
  */
 public class HeadService extends Service
 {
-    public String LOGGING="LOGGING";
     HeadLayer headLayer;
     @Nullable
     @Override
-    public IBinder onBind(Intent intent)
-    {
+    public IBinder onBind(Intent intent) {
         return null;
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId)
-    {
+    public int onStartCommand(Intent intent, int flags, int startId) {
         initHeadLayer();
         return super.onStartCommand(intent, flags, startId);
     }
-    public void initHeadLayer()
-    {
+
+    public void initHeadLayer() {
         this.headLayer =new HeadLayer(this);
-        Log.d(LOGGING,"Inside Head");
     }
 
     @Override
-    public void onDestroy()
-    {
+    public void onDestroy() {
         headLayer.destroy();
     }
 }

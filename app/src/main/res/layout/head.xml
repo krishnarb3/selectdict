@@ -2,22 +2,25 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:orientation="vertical"
               android:layout_width="match_parent"
-              android:layout_height="match_parent">
+              android:layout_height="match_parent"
+              android:focusable="false"
+              android:clickable="false">
     <ImageView
-        android:layout_width="30dp"
-        android:layout_height="30dp"
-        android:src="@drawable/search_dummy"
-        android:id="@+id/image"
+        android:id="@+id/icon"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@drawable/search_button"
+        android:focusable="true"
         android:layout_alignParentRight="true"/>
-    <TextView
+    <ListView
+        android:id="@+id/text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/text"
-        android:text="text"
         android:textColor="#fff"
         android:visibility="invisible"
+        android:padding="5dp"
         android:textSize="20sp"
-        android:layout_toLeftOf="@+id/image"
-        android:background="#1A237E"
+        android:layout_toLeftOf="@+id/icon"
+        android:background="@drawable/list_bg"
         />
 </RelativeLayout>
